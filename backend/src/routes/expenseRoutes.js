@@ -1,0 +1,187 @@
+import express from 'express';
+import Expense from '../models/Expense.js';
+
+const router = express.Router();
+
+// @route   GET /api/expenses
+// @desc    Get all expenses
+// @access  Public
+router.get('/', async (req, res) => {
+  try {
+    const expenses = await Expense.find().sort({ date: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: expenses.length,
+      data: expenses,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Failed to fetch expenses',
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/expenses/:id
+// @desc    Get a single expense by ID
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const expense = await Expense.findById(req.params.id);
+
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: expense,
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Failed to fetch expense',
+      error: error.message,
+    });
+  }
+});
+
+// @route   POST /api/expenses
+// @desc    Add a new expense
+// @access  Public
+router.post('/', async (req, res) => {
+  try {
+    const { title, amount, category, date } = req.body;
+
+    // Validate required fields
+    if (!title || amount === undefined || amount === null || !category) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide title, amount, and category',
+      });
+    }
+
+    const newExpense = new Expense({
+      title,
+      amount,
+      category,
+      date: date || Date.now(),
+    });
+
+    const savedExpense = await newExpense.save();
+
+    res.status(201).json({
+      success: true,
+      data: savedExpense,
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Failed to add expense',
+      error: error.message,
+    });
+  }
+});
+
+// @route   PUT /api/expenses/:id
+// @desc    Update an existing expense
+// @access  Public
+router.put('/:id', async (req, res) => {
+  try {
+    const { title, amount, category, date } = req.body;
+
+    const updatedExpense = await Expense.findByIdAndUpdate(
+      req.params.id,
+      { title, amount, category, date },
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedExpense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: updatedExpense,
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Failed to update expense',
+      error: error.message,
+    });
+  }
+});
+
+// @route   DELETE /api/expenses/:id
+// @desc    Delete an expense
+// @access  Public
+router.delete('/:id', async (req, res) => {
+  try {
+    const expense = await Expense.findByIdAndDelete(req.params.id);
+
+    if (!expense) {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Expense deleted successfully',
+      data: {},
+    });
+  } catch (error) {
+    if (error.name === 'CastError') {
+      return res.status(404).json({
+        success: false,
+        message: 'Expense not found',
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Server Error: Failed to delete expense',
+      error: error.message,
+    });
+  }
+});
+
+export default router;
