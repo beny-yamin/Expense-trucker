@@ -21,9 +21,31 @@ const app = express();// just means to acctivate the server
 
 const PORT = process.env.PORT || 5001;// by default it will run on port 5001
 
+// CORS Configuration
+const allowedOrigins = [
+  'https://expense-trucker2.onrender.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const cleanOrigin = origin.replace(/\/+$/, '');
+    const isAllowed = allowedOrigins.some((allowed) => allowed.replace(/\/+$/, '') === cleanOrigin);
+    callback(null, isAllowed);
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  credentials: true,
+  optionsSuccessStatus: 200,
+};
+
 // Middleware
-app.use(cors());// to allow requests from the front-end to my back-end  or server 
-app.use(express.json());// allows the server to accept and parse JSON data in the body of requests
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
+app.use(express.json());
 
 // Routes – protected by Firebase auth middleware
 app.use('/api/expenses', protect, expenseRoutes);
