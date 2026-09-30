@@ -28,6 +28,9 @@ app.use(express.json());// allows the server to accept and parse JSON data in th
 // Routes – protected by Firebase auth middleware
 app.use('/api/expenses', protect, expenseRoutes);
 
+app.get('/', (req, res) => {
+  res.send('Backend API is running');
+});
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
