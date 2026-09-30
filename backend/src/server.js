@@ -53,6 +53,22 @@ app.use('/api/expenses', protect, expenseRoutes);
 app.get('/', (req, res) => {
   res.send('Backend API is running');
 });
-app.listen(PORT, () => {
+
+// Global error handler – guarantees CORS headers are present even if errors occur
+app.use((err, req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  console.error('[Unhandled Server Error]:', err);
+  res.status(500).json({
+    success: false,
+    message: 'Internal Server Error',
+    error: err.message,
+  });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });

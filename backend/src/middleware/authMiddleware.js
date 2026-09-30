@@ -24,7 +24,14 @@ export async function protect(req, res, next) {
     });
   }
 
-  const token = authHeader.split('Bearer ')[1];
+  const token = authHeader.slice(7).trim();
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      message: 'Not authorized – no token provided.',
+    });
+  }
 
   try {
     const decoded = await adminAuth.verifyIdToken(token);

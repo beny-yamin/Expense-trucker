@@ -41,7 +41,17 @@ export function AuthProvider({ children }) {
 
   /* ─── Subscribe to Firebase auth state ─────────────────────────────────── */
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
+      if (fbUser) {
+        try {
+          const token = await fbUser.getIdToken();
+          localStorage.setItem('token', token);
+        } catch (e) {
+          console.error('[AuthContext] Failed to get and store token:', e);
+        }
+      } else {
+        localStorage.removeItem('token');
+      }
       setUser(mapFirebaseUser(fbUser));
       setLoading(false);
     });
@@ -52,6 +62,8 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     if (!email || !password) throw new Error('Please enter both email and password.');
     const credential = await signInWithEmailAndPassword(auth, email, password);
+    const token = await credential.user.getIdToken();
+    localStorage.setItem('token', token);
     return mapFirebaseUser(credential.user);
   };
 
@@ -59,6 +71,8 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     if (!name || !email || !password) throw new Error('Please fill in all registration fields.');
     const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const token = await credential.user.getIdToken();
+    localStorage.setItem('token', token);
     // Persist the display name immediately
     await updateProfile(credential.user, { displayName: name });
     // Force state refresh so the user object gets the updated displayName
@@ -69,11 +83,16 @@ export function AuthProvider({ children }) {
   /* ─── Google Popup Sign-In ──────────────────────────────────────────────── */
   const loginWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
+    const token = await result.user.getIdToken();
+    localStorage.setItem('token', token);
     return mapFirebaseUser(result.user);
   };
 
   /* ─── Sign-Out ──────────────────────────────────────────────────────────── */
-  const logout = () => signOut(auth);
+  const logout = async () => {
+    localStorage.removeItem('token');
+    return signOut(auth);
+  };
 
   /* ─── Profile Update ────────────────────────────────────────────────────── */
   const updateUserProfile = async (data) => {

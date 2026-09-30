@@ -16,17 +16,33 @@ const API_BASE_URL = normalizedBase.endsWith('/api')
   : `${normalizedBase}/api`;
 
 /**
- * Retrieve the current user's Firebase ID token, or null if not authenticated.
- * The token is short-lived (1 h); Firebase refreshes it automatically.
+ * Retrieve the current authentication token.
+ * Checks Firebase auth session and falls back to stored localStorage token.
  */
 async function getAuthToken() {
   try {
     if (typeof auth.authStateReady === 'function') {
       await auth.authStateReady();
     }
-    return auth.currentUser ? await auth.currentUser.getIdToken() : null;
+    if (auth.currentUser) {
+      const freshToken = await auth.currentUser.getIdToken();
+      if (freshToken) {
+        localStorage.setItem('token', freshToken);
+        return freshToken;
+      }
+    }
+    // Fallback to token stored in localStorage
+    return (
+      localStorage.getItem('token') ||
+      localStorage.getItem('authToken') ||
+      null
+    );
   } catch {
-    return null;
+    return (
+      localStorage.getItem('token') ||
+      localStorage.getItem('authToken') ||
+      null
+    );
   }
 }
 
@@ -46,15 +62,21 @@ async function request(endpoint, options = {}) {
     url += `?${new URLSearchParams(params).toString()}`;
   }
 
-  // Attach Firebase ID token for authenticated requests
-  const token = await getAuthToken();
+  // Attach stored authentication token for authenticated requests
+  const token = (headers && (headers.Authorization || headers.authorization))
+    ? null
+    : await getAuthToken();
+
+  const authHeader = token
+    ? (token.startsWith('Bearer ') ? token : `Bearer ${token}`)
+    : null;
 
   const config = {
     method,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(authHeader ? { Authorization: authHeader } : {}),
       ...headers,
     },
   };

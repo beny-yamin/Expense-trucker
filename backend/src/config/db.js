@@ -7,7 +7,7 @@ const connectDB = async () => {
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`MongoDB connection error: ${error.message}`);
-    process.exit(1);
+    // Keep server alive so Express can serve CORS preflights and report status instead of 502 crash
   }
 };
 export default connectDB;
