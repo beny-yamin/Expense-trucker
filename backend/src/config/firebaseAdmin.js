@@ -3,8 +3,8 @@
  * Initializes the Firebase Admin SDK for server-side token verification.
  * Uses Application Default Credentials via FIREBASE_PROJECT_ID env var.
  */
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getAuth }                       from 'firebase-admin/auth';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getAuth }                 from 'firebase-admin/auth';
 
 let adminApp;
 
