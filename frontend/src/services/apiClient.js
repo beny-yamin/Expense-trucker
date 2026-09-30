@@ -6,9 +6,14 @@
  */
 import { auth } from '../firebase.js';
 
-const API_BASE_URL =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL) ||
-  'http://localhost:5001/api';
+const rawBaseUrl =
+  (typeof import.meta !== 'undefined' && (import.meta.env?.VITE_API_URL || import.meta.env?.VITE_API_BASE_URL)) ||
+  'http://localhost:5001';
+
+const normalizedBase = rawBaseUrl.replace(/\/+$/, '');
+const API_BASE_URL = normalizedBase.endsWith('/api')
+  ? normalizedBase
+  : `${normalizedBase}/api`;
 
 /**
  * Retrieve the current user's Firebase ID token, or null if not authenticated.
