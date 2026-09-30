@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import expenseService from '../services/expenseService.js';
+import { useAuth } from './AuthContext.jsx';
 
 const ExpenseContext = createContext();
 
@@ -27,6 +28,7 @@ const SEED_DATA = [
 ];
 
 export function ExpenseProvider({ children }) {
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
   const [loading, setLoading] = useState(true);
@@ -46,6 +48,9 @@ export function ExpenseProvider({ children }) {
   };
 
   const loadExpenses = useCallback(async () => {
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
     setLoading(true);
     try {
       const data = await expenseService.getAll();
@@ -66,11 +71,17 @@ export function ExpenseProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authLoading, isAuthenticated]);
 
   useEffect(() => {
-    loadExpenses();
-  }, [loadExpenses]);
+    if (!authLoading && isAuthenticated) {
+      loadExpenses();
+    } else if (!authLoading && !isAuthenticated) {
+      setExpenses([]);
+      setLoading(false);
+      setBackendConnected(false);
+    }
+  }, [authLoading, isAuthenticated, user?.id, loadExpenses]);
 
   // Subscribe to live expense updates from expenseService
   useEffect(() => {

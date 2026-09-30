@@ -21,6 +21,9 @@ const API_BASE_URL = normalizedBase.endsWith('/api')
  */
 async function getAuthToken() {
   try {
+    if (typeof auth.authStateReady === 'function') {
+      await auth.authStateReady();
+    }
     return auth.currentUser ? await auth.currentUser.getIdToken() : null;
   } catch {
     return null;
