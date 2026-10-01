@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { useExpenses } from '../context/ExpenseContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 
@@ -9,6 +9,11 @@ const NAV_ITEMS = [
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
+// Swipe detection thresholds
+const EDGE_ZONE = 30;        // px from left edge to start a swipe-open
+const SWIPE_THRESHOLD = 60;  // min px to complete a swipe
+const SIDEBAR_WIDTH = 260;
+
 export default function Sidebar({ activePage, setActivePage, isOpen, onClose }) {
   const { expenses } = useExpenses();
   const { monthlyBudget, formatCurrency } = useSettings();
@@ -16,11 +21,162 @@ export default function Sidebar({ activePage, setActivePage, isOpen, onClose }) 
   const totalSpent = expenses.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   const budgetPercent = Math.min(Math.round((totalSpent / (monthlyBudget || 1)) * 100), 100);
 
+  const sidebarRef = useRef(null);
+  const overlayRef = useRef(null);
+  const touchRef = useRef({ startX: 0, startY: 0, currentX: 0, swiping: false, direction: null });
+
+  // Stable callback refs to avoid stale closures in touch listeners
+  const isOpenRef = useRef(isOpen);
+  useEffect(() => { isOpenRef.current = isOpen; }, [isOpen]);
+
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Lock body scroll when sidebar is open on mobile
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    if (isMobile && isOpen) {
+      document.body.classList.add('sidebar-open');
+    } else {
+      document.body.classList.remove('sidebar-open');
+    }
+    return () => document.body.classList.remove('sidebar-open');
+  }, [isOpen]);
+
+  // Set up swipe-from-left gesture on the whole document (mobile only)
+  const handleOpen = useCallback(() => {
+    // We need a way to open the sidebar from outside — use a custom event
+    // dispatched on the document, caught by App.jsx's state
+    // But since we receive isOpen as a prop, we fire the toggle via the
+    // Navbar's onToggleSidebar. Instead, dispatch a custom event.
+    document.dispatchEvent(new CustomEvent('sidebar:open'));
+  }, []);
+
+  useEffect(() => {
+    const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+    const onTouchStart = (e) => {
+      if (!isMobile()) return;
+      const touch = e.touches[0];
+      const t = touchRef.current;
+      t.startX = touch.clientX;
+      t.startY = touch.clientY;
+      t.currentX = touch.clientX;
+      t.swiping = false;
+      t.direction = null;
+
+      // Only start tracking if: near left edge (to open) OR sidebar is open (to close)
+      if (touch.clientX <= EDGE_ZONE || isOpenRef.current) {
+        t.swiping = true;
+      }
+    };
+
+    const onTouchMove = (e) => {
+      const t = touchRef.current;
+      if (!t.swiping || !isMobile()) return;
+
+      const touch = e.touches[0];
+      const dx = touch.clientX - t.startX;
+      const dy = touch.clientY - t.startY;
+
+      // Determine direction on first significant move
+      if (!t.direction) {
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          t.direction = Math.abs(dx) > Math.abs(dy) ? 'horizontal' : 'vertical';
+        }
+      }
+
+      // Abort if vertical scroll
+      if (t.direction === 'vertical') {
+        t.swiping = false;
+        return;
+      }
+
+      t.currentX = touch.clientX;
+
+      // Live drag feedback on the sidebar element
+      const sidebar = sidebarRef.current;
+      const overlay = overlayRef.current;
+      if (!sidebar) return;
+
+      if (isOpenRef.current) {
+        // Dragging to close: allow only leftward drag
+        const offset = Math.min(0, dx);
+        sidebar.style.transition = 'none';
+        sidebar.style.transform = `translateX(${offset}px)`;
+        if (overlay) {
+          const progress = Math.max(0, 1 + offset / SIDEBAR_WIDTH);
+          overlay.style.opacity = String(progress);
+        }
+      } else {
+        // Dragging to open: allow only rightward drag from left edge
+        const offset = Math.min(dx, SIDEBAR_WIDTH) - SIDEBAR_WIDTH;
+        if (dx > 0) {
+          sidebar.style.transition = 'none';
+          sidebar.style.transform = `translateX(${Math.max(offset, -SIDEBAR_WIDTH)}px)`;
+          if (overlay) {
+            overlay.style.display = 'block';
+            const progress = Math.max(0, dx / SIDEBAR_WIDTH);
+            overlay.style.opacity = String(Math.min(progress, 1));
+          }
+        }
+      }
+    };
+
+    const onTouchEnd = () => {
+      const t = touchRef.current;
+      if (!t.swiping || t.direction !== 'horizontal' || !isMobile()) {
+        t.swiping = false;
+        return;
+      }
+
+      const dx = t.currentX - t.startX;
+      const sidebar = sidebarRef.current;
+      const overlay = overlayRef.current;
+
+      // Reset inline transition styles
+      if (sidebar) {
+        sidebar.style.transition = '';
+        sidebar.style.transform = '';
+      }
+      if (overlay) {
+        overlay.style.opacity = '';
+        overlay.style.display = '';
+      }
+
+      if (isOpenRef.current) {
+        // Close if swiped left enough
+        if (dx < -SWIPE_THRESHOLD) {
+          onCloseRef.current?.();
+        }
+      } else {
+        // Open if swiped right enough
+        if (dx > SWIPE_THRESHOLD) {
+          handleOpen();
+        }
+      }
+
+      t.swiping = false;
+      t.direction = null;
+    };
+
+    document.addEventListener('touchstart', onTouchStart, { passive: true });
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart);
+      document.removeEventListener('touchmove', onTouchMove);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [handleOpen]);
+
   return (
     <>
       {/* Mobile overlay */}
       {isOpen && (
         <div
+          ref={overlayRef}
           onClick={onClose}
           style={{
             position: 'fixed',
@@ -28,20 +184,25 @@ export default function Sidebar({ activePage, setActivePage, isOpen, onClose }) 
             background: 'var(--bg-overlay)',
             backdropFilter: 'blur(4px)',
             zIndex: 45,
+            transition: 'opacity 0.3s ease',
           }}
         />
       )}
 
       <aside
+        ref={sidebarRef}
         className={`sidebar ${isOpen ? 'open' : ''}`}
         style={{
-          width: '260px',
+          width: `${SIDEBAR_WIDTH}px`,
           background: 'var(--bg-sidebar)',
           borderRight: '1px solid var(--border)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 50,
           transition: 'transform 0.3s ease',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
         <div style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -54,7 +215,7 @@ export default function Sidebar({ activePage, setActivePage, isOpen, onClose }) 
           <button
             className="btn btn-ghost btn-icon mobile-close-btn"
             onClick={onClose}
-            style={{ display: 'none' }}
+            style={{ display: 'none', minWidth: '44px', minHeight: '44px' }}
           >
             ✕
           </button>

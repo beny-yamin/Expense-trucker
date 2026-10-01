@@ -22,6 +22,13 @@ function MainApp() {
   const [activePage, setActivePage] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Listen for swipe-to-open custom event from Sidebar touch gestures
+  React.useEffect(() => {
+    const handleSidebarOpen = () => setIsSidebarOpen(true);
+    document.addEventListener('sidebar:open', handleSidebarOpen);
+    return () => document.removeEventListener('sidebar:open', handleSidebarOpen);
+  }, []);
+
   // Modal States
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [expenseToEdit, setExpenseToEdit] = useState(null);
