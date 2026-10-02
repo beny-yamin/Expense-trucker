@@ -8,6 +8,7 @@ export const CURRENCIES = [
   { code: 'USD', symbol: '$', label: 'USD ($)' },
   { code: 'EUR', symbol: '€', label: 'EUR (€)' },
   { code: 'GBP', symbol: '£', label: 'GBP (£)' },
+  { code: 'ETB', symbol: 'Br', label: 'ETB (Br - Ethiopian Birr)' },
   { code: 'JPY', symbol: '¥', label: 'JPY (¥)' },
   { code: 'CAD', symbol: 'CA$', label: 'CAD ($)' },
   { code: 'AUD', symbol: 'A$', label: 'AUD ($)' },
@@ -57,7 +58,8 @@ export function SettingsProvider({ children }) {
 
   const formatCurrency = (amount) => {
     const val = Number(amount) || 0;
-    return `${activeCurrency.symbol}${val.toLocaleString(undefined, {
+    const prefix = activeCurrency.symbol.length > 1 ? `${activeCurrency.symbol} ` : activeCurrency.symbol;
+    return `${prefix}${val.toLocaleString(undefined, {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
