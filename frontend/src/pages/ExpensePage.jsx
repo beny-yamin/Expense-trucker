@@ -9,6 +9,7 @@ import expenseService, {
 import { useExpenses } from '../context/ExpenseContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import ExpenseForm from '../components/ExpenseForm.jsx';
+import ExportModal from '../components/ExportModal.jsx';
 
 /**
  * ExpensePage.jsx
@@ -57,6 +58,7 @@ export default function ExpensePage({
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [sortBy, setSortBy] = useState('date-desc');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Standalone Internal Modal State (used if no external modal handler is provided)
   const [internalModalOpen, setInternalModalOpen] = useState(false);
@@ -449,12 +451,13 @@ export default function ExpensePage({
 
           <button
             className="btn btn-secondary"
-            onClick={handleExportCSV}
-            disabled={filteredExpenses.length === 0}
+            onClick={() => setIsExportModalOpen(true)}
+            disabled={expenses.length === 0}
             style={{ fontSize: '0.8rem', padding: '0.55rem 0.85rem' }}
+            title="Export reports as printable PDF, CSV, JSON, or shareable text summary"
           >
-            <span>📥</span>
-            <span>Export CSV</span>
+            <span>📤</span>
+            <span>Export & Share</span>
           </button>
 
           <button className="btn btn-primary" onClick={handleOpenAdd}>
@@ -972,6 +975,12 @@ export default function ExpensePage({
           </div>
         </div>
       )}
+
+      {/* Export & Share Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
     </div>
   );
 }

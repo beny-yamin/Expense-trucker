@@ -2,12 +2,14 @@ import React, { useState } from 'react';
 import { useExpenses } from '../context/ExpenseContext.jsx';
 import { useSettings } from '../context/SettingsContext.jsx';
 import { CategoryDonutChart } from '../components/SimpleCharts.jsx';
+import ExportModal from '../components/ExportModal.jsx';
 
 export default function ReportsPage() {
   const { expenses, categories } = useExpenses();
   const { formatCurrency, monthlyBudget } = useSettings();
 
   const [period, setPeriod] = useState('ALL'); // 'ALL', '30D', 'MONTH'
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const filteredExpenses = expenses.filter((exp) => {
     if (period === 'ALL') return true;
@@ -90,37 +92,56 @@ export default function ReportsPage() {
           </p>
         </div>
 
-        {/* Period Selector Tabs */}
-        <div style={{
-          display: 'flex',
-          background: 'var(--bg-input)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border)',
-        }}>
-          {[
-            { id: 'ALL', label: 'All Time' },
-            { id: '30D', label: 'Last 30 Days' },
-            { id: 'MONTH', label: 'This Month' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setPeriod(tab.id)}
-              style={{
-                padding: '0.5rem 1rem',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                background: period === tab.id ? 'var(--primary)' : 'transparent',
-                color: period === tab.id ? '#ffffff' : 'var(--text-muted)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'var(--transition)',
-              }}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Period Selector Tabs */}
+          <div style={{
+            display: 'flex',
+            background: 'var(--bg-input)',
+            padding: '4px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border)',
+          }}>
+            {[
+              { id: 'ALL', label: 'All Time' },
+              { id: '30D', label: 'Last 30 Days' },
+              { id: 'MONTH', label: 'This Month' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setPeriod(tab.id)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  background: period === tab.id ? 'var(--primary)' : 'transparent',
+                  color: period === tab.id ? '#ffffff' : 'var(--text-muted)',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  transition: 'var(--transition)',
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Export & Share Button */}
+          <button
+            className="btn btn-primary"
+            onClick={() => setIsExportModalOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.45rem',
+              fontSize: '0.85rem',
+              padding: '0.55rem 0.95rem',
+            }}
+            title="Export reports as printable PDF, CSV, JSON, or shareable summary"
+          >
+            <span>📤</span>
+            <span>Export & Share</span>
+          </button>
         </div>
       </div>
 
@@ -248,6 +269,12 @@ export default function ReportsPage() {
           <CategoryDonutChart expenses={filteredExpenses} />
         </div>
       </div>
+
+      {/* Export & Share Modal */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
     </div>
   );
 }

@@ -27,6 +27,68 @@ router.get('/', async (req, res) => {
   }
 });
 
+// @route   GET /api/expenses/export/csv
+// @desc    Download CSV export of expenses
+// @access  Public / Authenticated
+router.get('/export/csv', async (req, res) => {
+  try {
+    const userEmail = req.firebaseUser?.email || req.query.email;
+    const query = userEmail ? { userEmail: userEmail.toLowerCase() } : {};
+    const expenses = await Expense.find(query).sort({ date: -1 });
+
+    const headers = ['Date', 'Description', 'Category', 'Amount', 'UserEmail'];
+    const rows = expenses.map((exp) => [
+      new Date(exp.date).toISOString().split('T')[0],
+      `"${(exp.title || '').replace(/"/g, '""')}"`,
+      `"${(exp.category || '').replace(/"/g, '""')}"`,
+      exp.amount,
+      `"${(exp.userEmail || '').replace(/"/g, '""')}"`,
+    ]);
+
+    const csvData = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="expenses_export_${new Date().toISOString().split('T')[0]}.csv"`
+    );
+    res.status(200).send(csvData);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate CSV export',
+      error: error.message,
+    });
+  }
+});
+
+// @route   GET /api/expenses/export/json
+// @desc    Download JSON backup of expenses
+// @access  Public / Authenticated
+router.get('/export/json', async (req, res) => {
+  try {
+    const userEmail = req.firebaseUser?.email || req.query.email;
+    const query = userEmail ? { userEmail: userEmail.toLowerCase() } : {};
+    const expenses = await Expense.find(query).sort({ date: -1 });
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="expenses_backup_${new Date().toISOString().split('T')[0]}.json"`
+    );
+    res.status(200).json({
+      exportedAt: new Date().toISOString(),
+      count: expenses.length,
+      data: expenses,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate JSON export',
+      error: error.message,
+    });
+  }
+});
+
 // @route   GET /api/expenses/:id
 // @desc    Get a single expense by ID
 // @access  Public
