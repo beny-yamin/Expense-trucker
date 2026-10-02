@@ -4,6 +4,7 @@ import cors from 'cors';// response from front-end  and allow requests from the 
 import connectDB from './config/db.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import { protect } from './middleware/authMiddleware.js';
+import { startKeepAlive } from './utils/keepAlive.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -50,6 +51,16 @@ app.use(express.json());
 // Routes – protected by Firebase auth middleware
 app.use('/api/expenses', protect, expenseRoutes);
 
+// Health check & keep-alive ping endpoint (public, fast response for cold-start prevention)
+app.get(['/api/health', '/api/ping', '/health', '/ping'], (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    message: 'Backend API is running and warm',
+    uptime: Math.round(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/', (req, res) => {
   res.send('Backend API is running');
 });
@@ -71,4 +82,5 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+  startKeepAlive();
 });

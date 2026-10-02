@@ -5,15 +5,45 @@ import { ExpenseProvider, useExpenses } from './context/ExpenseContext.jsx';
 
 import Navbar from './components/Navbar.jsx';
 import Sidebar from './components/Sidebar.jsx';
-import ExpenseModal from './components/ExpenseModal.jsx';
-import DeleteConfirmModal from './components/DeleteConfirmModal.jsx';
 import Toast from './components/Toast.jsx';
 
-import AuthPage from './pages/AuthPage.jsx';
-import DashboardPage from './pages/DashboardPage.jsx';
-import ExpensesPage from './pages/ExpensesPage.jsx';
-import ReportsPage from './pages/ReportsPage.jsx';
-import SettingsPage from './pages/SettingsPage.jsx';
+// Lazy-loaded pages for Vite dynamic chunk code-splitting
+const AuthPage = React.lazy(() => import('./pages/AuthPage.jsx'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage.jsx'));
+const ExpensesPage = React.lazy(() => import('./pages/ExpensesPage.jsx'));
+const ReportsPage = React.lazy(() => import('./pages/ReportsPage.jsx'));
+const SettingsPage = React.lazy(() => import('./pages/SettingsPage.jsx'));
+
+// Lazy-loaded modals for lighter initial payload
+const ExpenseModal = React.lazy(() => import('./components/ExpenseModal.jsx'));
+const DeleteConfirmModal = React.lazy(() => import('./components/DeleteConfirmModal.jsx'));
+
+function PageFallback() {
+  return (
+    <div
+      style={{
+        minHeight: '60vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '1rem',
+      }}
+    >
+      <div
+        style={{
+          width: '36px',
+          height: '36px',
+          borderRadius: '50%',
+          border: '3px solid var(--border, #334155)',
+          borderTopColor: 'var(--primary, #3b82f6)',
+          animation: 'spin 0.8s linear infinite',
+        }}
+      />
+      <p style={{ color: 'var(--text-muted, #94a3b8)', fontSize: '0.875rem' }}>Loading view…</p>
+    </div>
+  );
+}
 
 function MainApp() {
   const { isAuthenticated, loading } = useAuth();
@@ -61,7 +91,11 @@ function MainApp() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage />;
+    return (
+      <React.Suspense fallback={<PageFallback />}>
+        <AuthPage />
+      </React.Suspense>
+    );
   }
 
   const handleOpenAdd = () => {
@@ -102,50 +136,55 @@ function MainApp() {
           activePage={activePage}
           onOpenAddModal={handleOpenAdd}
           onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+          onNavigate={(page) => setActivePage(page)}
         />
 
         <main className="page-container">
-          {activePage === 'dashboard' && (
-            <DashboardPage
-              onOpenAddModal={handleOpenAdd}
-              onEditExpense={handleOpenEdit}
-              onDeleteExpense={handleOpenDelete}
-              onNavigate={(page) => setActivePage(page)}
-            />
-          )}
+          <React.Suspense fallback={<PageFallback />}>
+            {activePage === 'dashboard' && (
+              <DashboardPage
+                onOpenAddModal={handleOpenAdd}
+                onEditExpense={handleOpenEdit}
+                onDeleteExpense={handleOpenDelete}
+                onNavigate={(page) => setActivePage(page)}
+              />
+            )}
 
-          {activePage === 'expenses' && (
-            <ExpensesPage
-              onOpenAddModal={handleOpenAdd}
-              onEditExpense={handleOpenEdit}
-              onDeleteExpense={handleOpenDelete}
-            />
-          )}
+            {activePage === 'expenses' && (
+              <ExpensesPage
+                onOpenAddModal={handleOpenAdd}
+                onEditExpense={handleOpenEdit}
+                onDeleteExpense={handleOpenDelete}
+              />
+            )}
 
-          {activePage === 'reports' && (
-            <ReportsPage />
-          )}
+            {activePage === 'reports' && (
+              <ReportsPage />
+            )}
 
-          {activePage === 'settings' && (
-            <SettingsPage />
-          )}
+            {activePage === 'settings' && (
+              <SettingsPage />
+            )}
+          </React.Suspense>
         </main>
       </div>
 
-      {/* Add / Edit Expense Modal */}
-      <ExpenseModal
-        isOpen={isExpenseModalOpen}
-        onClose={() => setIsExpenseModalOpen(false)}
-        expenseToEdit={expenseToEdit}
-      />
+      {/* Add / Edit Expense Modal (Lazy loaded on demand) */}
+      <React.Suspense fallback={null}>
+        <ExpenseModal
+          isOpen={isExpenseModalOpen}
+          onClose={() => setIsExpenseModalOpen(false)}
+          expenseToEdit={expenseToEdit}
+        />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={handleConfirmDelete}
-        expenseTitle={expenseToDelete?.title}
-      />
+        {/* Delete Confirmation Modal (Lazy loaded on demand) */}
+        <DeleteConfirmModal
+          isOpen={isDeleteModalOpen}
+          onClose={() => setIsDeleteModalOpen(false)}
+          onConfirm={handleConfirmDelete}
+          expenseTitle={expenseToDelete?.title}
+        />
+      </React.Suspense>
 
       {/* Toast Feedback */}
       <Toast />

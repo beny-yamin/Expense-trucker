@@ -8,7 +8,10 @@ const router = express.Router();
 // @access  Public
 router.get('/', async (req, res) => {
   try {
-    const expenses = await Expense.find().sort({ date: -1 });
+    // Retain exact existing behavior: return all expenses sorted by date (-1).
+    // If an email query param is provided, leverage the indexed userEmail field.
+    const query = req.query.email ? { userEmail: req.query.email.toLowerCase() } : {};
+    const expenses = await Expense.find(query).sort({ date: -1 });
 
     res.status(200).json({
       success: true,
@@ -73,11 +76,14 @@ router.post('/', async (req, res) => {
       });
     }
 
+    const userEmail = (req.firebaseUser?.email || req.body.userEmail || '').trim().toLowerCase() || undefined;
+
     const newExpense = new Expense({
       title,
       amount,
       category,
       date: date || Date.now(),
+      userEmail,
     });
 
     const savedExpense = await newExpense.save();

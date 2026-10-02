@@ -1,9 +1,13 @@
 import mongoose from 'mongoose';
+import '../models/User.js';
+import '../models/Expense.js';
 
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGO_URI || process.env.MONGODB_URL || 'mongodb://localhost:27017/my-project';
-    const conn = await mongoose.connect(mongoUri);
+    const conn = await mongoose.connect(mongoUri, {
+      autoIndex: true, // Automatically build schema indexes (including unique email index)
+    });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error(`MongoDB connection error: ${error.message}`);
